@@ -1,0 +1,55 @@
+version: '3'
+
+services:
+  db:
+    image: mysql:8
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: example
+      MYSQL_DATABASE: example
+    volumes:
+      - shared-backup:/backup
+      - db-persist:/var/lib/mysql
+    networks:
+      - lab
+    labels:
+      # - docker-volume-backup.stop-during-backup=true
+      - docker-volume-backup.exec-label=database
+      - docker-volume-backup.archive-pre=/bin/sh -c 'mysqldump -uroot -pexample example > /backup/dump.sql'
+
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    restart: always
+    ports:
+      - 8080:80
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: example
+    networks:
+      - lab
+
+  offenbackup:
+    image: offen/docker-volume-backup
+    restart: always
+    container_name: offenbackup
+    environment:
+      BACKUP_CRON_EXPRESSION: "@daily"
+      BACKUP_SOURCES: "/backup"
+      BACKUP_RETENTION_DAYS: 7
+      EXEC_LABEL: database
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - shared-backup:/backup:ro
+      - ./local_backups:/archive
+
+volumes:
+  db-persist:
+  shared-backup:
+
+
+networks:
+  lab:
+    # fixed name to `lab` network
+    name: lab

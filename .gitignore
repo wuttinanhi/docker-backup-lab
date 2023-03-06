@@ -1,0 +1,3 @@
+*.gz
+local_backups/
+temp/
